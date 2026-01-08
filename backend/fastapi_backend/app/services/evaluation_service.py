@@ -7,6 +7,34 @@ model_name = settings.HF_EVAL_MODEL_NAME
 
 class EvaluationService:
 
+    async def evaluate_batch(self, payloads):
+        engine = EvaluationEngine(
+            model_name = model_name, 
+            global_model = models.ai_model
+        )
+
+        results = []
+
+        for payload in payloads:
+            
+            data = payload.model_dump()
+
+            try:
+                result = engine.model_evaluator(data)
+            except Exception as e:
+                result = {
+                    "score": 0,
+                    "strengths": [],
+                    "weakness": [],
+                    "justification": str(e),
+                    "suggested_improvement": "Retry later"
+                }
+
+            result["question_id"] = payload.question_id
+            results.append(result)
+
+        return results
+
     def evaluate(self, payload: EvaluateAnswer):
         data = payload.model_dump()
 
