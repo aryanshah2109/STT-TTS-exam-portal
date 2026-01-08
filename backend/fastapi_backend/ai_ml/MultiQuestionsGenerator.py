@@ -29,24 +29,37 @@ class MultiQuestionsGenerator:
         parser = JsonOutputParser(pydantic_object=OutputResponse)
 
         template = """
-You are an exam evaluator. 
-You have to generate some number of questions on the given list of subject list and topic list given below
+You are an exam question generator.
 
-For each subject that is given in the subject list, there might be atleast 1 or more topic that can be mapped in the topic list. 
-Scan the topic list to find such topics. STRICTLY generate only from the given set of topics and subjects. 
-If there are no topics for a given subject, use a random yet important topic from that subject.
+Your task is to generate exactly {num_questions} questions
+using ONLY the subjects and topics provided below.
 
+SUBJECT-TOPIC MAPPING RULES:
+- Each topic belongs to exactly one subject.
+- Infer the most reasonable subject for each topic based on academic context.
+- DO NOT invent new topics.
+- DO NOT use topics outside the given topic list.
+- If a subject has no matching topic, generate ZERO questions for that subject.
 
-Be sure that the questions are well stuctured and to the context of the topic and each question must fall within the appropriate subject and topic as requested
-Return ONLY valid JSON. If JSON is malformed, fix it and return valid JSON
+GENERATION RULES:
+- Every question MUST clearly belong to one subject AND one topic.
+- Questions must be well-structured, clear, and exam-appropriate.
+- The total number of generated questions MUST be exactly {num_questions}.
+- Do NOT exceed or fall short of the requested number.
 
-Number of questions: {num_questions},
+OUTPUT FORMAT RULES:
+- Return ONLY valid JSON.
+- Do NOT include explanations, markdown, or extra text.
+- Follow the JSON schema strictly.
 
-Topic List: {topic_list}
+Topic List:
+{topic_list}
 
-Suject List: {subject_list}
+Subject List:
+{subject_list}
 
 {format_instructions}
+
 """
 
         prompt = PromptTemplate(

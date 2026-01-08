@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from app.schemas.question_generation import MultiQuestionGenerationRequest, MultiQuestionGenerationResponse
-from app.services.question_generation_service import generation_service
+from app.schemas.multi_question_generation import MultiQuestionGenerationRequest, MultiQuestionGenerationResponse
+from app.services.multi_question_generation_service import generation_service
 
 router = APIRouter(
     prefix="/questions_generate_multi",
