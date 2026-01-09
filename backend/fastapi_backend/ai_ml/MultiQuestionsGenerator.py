@@ -9,8 +9,40 @@ from ai_ml.ModelCreator import HFModelCreation
 from ai_ml.AIExceptions import *
 
 
+class Question(BaseModel):
+    text: Annotated[
+        str, 
+        Field(
+            title="Question text", 
+            description="A single question of a topic"
+        )
+    ]
+
+class TopicQuestions(BaseModel):
+    topic: Annotated[
+        str,
+        Field(
+            title="Topic name",
+            description="Topic name from the provided topic_list"
+        )
+    ]
+    questions: Annotated[
+        List[Question],
+        Field(
+            title="Questions for the topic",
+            min_items=1
+        )
+    ]
+
+
 class OutputResponse(BaseModel):
-    questions: Annotated[List[str], Field(title="Questions", description="The questions created by the model")]
+    topics: Annotated[
+        List[TopicQuestions],
+        Field(
+            title="Output response",
+            min_items=1
+        )
+    ]
 
 
 
@@ -47,6 +79,11 @@ GENERATION RULES:
 - The total number of generated questions MUST be exactly {num_questions}.
 - Do NOT exceed or fall short of the requested number.
 
+DISTRIBUTION RULES:
+- Distribute questions as evenly as possible across topics.
+- If exact division is not possible, assign the extra questions
+  starting from the first topic in the topic list.
+
 OUTPUT FORMAT RULES:
 - Return ONLY valid JSON.
 - Do NOT include explanations, markdown, or extra text.
@@ -71,7 +108,7 @@ Subject List:
         )
 
 
-        chain = prompt | self.get_model()
+        chain = prompt | self.get_model() | parser
 
         return chain, parser
 
@@ -118,7 +155,19 @@ Subject List:
                 output = str(raw)
 
             cleaned = self.sanitize_json(output)
-            return parser.parse(cleaned)
+
+            result = parser.parse(cleaned)
+
+            self.validate_count(result, input_request["num_questions"])
+            
+            return result
 
         except Exception as e:
             print(f"Some error occured! Details: {e}")
+
+    def validate_count(result: OutputResponse, expected: int):
+        total = sum(len(t.questions) for t in result.topics)
+        if total != expected:
+            raise ValueError(
+                f"Expected {expected} questions, got {total}"
+            )
