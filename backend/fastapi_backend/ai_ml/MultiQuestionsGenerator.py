@@ -1,22 +1,20 @@
 from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
+from langchain_core.output_parsers import JsonOutputParser
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Annotated, Optional
-import re
+from typing import List, Annotated
 
 from ai_ml.ModelCreator import HFModelCreation
-from ai_ml.AIExceptions import *
-
 
 class Question(BaseModel):
     text: Annotated[
-        str, 
+        str,
         Field(
-            title="Question text", 
+            title="Question text",
             description="A single question of a topic"
         )
     ]
+
 
 class TopicQuestions(BaseModel):
     topic: Annotated[
@@ -44,10 +42,9 @@ class OutputResponse(BaseModel):
         )
     ]
 
-
-
 class MultiQuestionsGenerator:
-    def __init__(self, model_name: str, global_model = None):
+
+    def __init__(self, model_name: str, global_model=None):
         self.model_name = model_name
         self.model = global_model
 
@@ -56,7 +53,6 @@ class MultiQuestionsGenerator:
             self.model = HFModelCreation.hf_model_creator(self.model_name)
         return self.model
 
-    
     def chain_creator(self):
         parser = JsonOutputParser(pydantic_object=OutputResponse)
 
@@ -81,7 +77,7 @@ GENERATION RULES:
 
 DISTRIBUTION RULES:
 - Distribute questions as evenly as possible across topics.
-- If exact division is not possible, assign the extra questions
+- If exact division is not possible, assign extra questions
   starting from the first topic in the topic list.
 
 OUTPUT FORMAT RULES:
@@ -96,76 +92,29 @@ Subject List:
 {subject_list}
 
 {format_instructions}
-
 """
 
         prompt = PromptTemplate(
             template=template,
-            input_variables= ["num_questions", "topic_list", "subject_list"],
-            partial_variables= {
+            input_variables=["num_questions", "topic_list", "subject_list"],
+            partial_variables={
                 "format_instructions": parser.get_format_instructions()
             }
         )
 
-
         chain = prompt | self.get_model() | parser
+        return chain
 
-        return chain, parser
+    def create_questions(self, input_request: dict) -> OutputResponse:
+        chain = self.chain_creator()
 
-    def sanitize_json(self, text: str) -> str:
-        text = text.replace("```json", "").replace("```", "").strip()
-        m = re.search(r"\{[\s\S]*\}", text)
-        if m:
-            text = m.group(0)
-        text = re.sub(r",\s*}", "}", text)
-        text = re.sub(r",\s*]", "]", text)
-        return text
+        result: OutputResponse = chain.invoke(input_request)
 
+        self.validate_count(result, input_request["num_questions"])
 
-    def create_questions(self, input_request: dict):
-        if "topic_list" not in input_request:
-            raise KeyError("Input request must contain the topic list related to which you want questions")
-        
-        elif "subject_list" not in input_request:
-            raise KeyError("Input request must contain the subject list related to which you want questions")
+        return result
 
-        elif "num_questions" not in input_request:
-            raise KeyError("Input request must contain the number of questions you want related to the topic")
-        
-        try:
-            
-            chain, parser = self.chain_creator()
-
-            raw = chain.invoke(input_request)
-
-            # Extract actual text reliably
-            if isinstance(raw, dict) and "text" in raw:
-                output = raw["text"]
-
-            elif isinstance(raw, dict) and "generated_text" in raw:
-                output = raw["generated_text"]
-
-            elif hasattr(raw, "generations"):
-                output = raw.generations[0][0].text
-
-            elif isinstance(raw, list) and isinstance(raw[0], dict) and "generated_text" in raw[0]:
-                output = raw[0]["generated_text"]
-
-            else:
-                output = str(raw)
-
-            cleaned = self.sanitize_json(output)
-
-            result = parser.parse(cleaned)
-
-            self.validate_count(result, input_request["num_questions"])
-            
-            return result
-
-        except Exception as e:
-            print(f"Some error occured! Details: {e}")
-
-    def validate_count(result: OutputResponse, expected: int):
+    def validate_count(self, result: OutputResponse, expected: int):
         total = sum(len(t.questions) for t in result.topics)
         if total != expected:
             raise ValueError(

@@ -9,16 +9,22 @@ router = APIRouter(
 
 @router.post("/generate", response_model= MultiQuestionGenerationResponse)
 async def generate_route(payload: MultiQuestionGenerationRequest):
-    questions = generation_service.generate(payload)
+    
+    try:
+        questions = generation_service.generate(payload)
 
-    if not questions:
+        if not questions:
+            raise HTTPException(
+                status_code=500,
+                detail="Model failed to generate questions"
+            )
+
+        return questions
+
+    except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail="Model failed to generate questions"
+            detail=f"Could not generate questions due to error. Details: {e}"
         )
-
-    return questions
-
-
 
 
