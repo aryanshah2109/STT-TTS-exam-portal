@@ -26,5 +26,4 @@ async def generate_route(payload: MultiQuestionGenerationRequest):
             status_code=500,
             detail=f"Could not generate questions due to error. Details: {e}"
         )
-
-
+ 
