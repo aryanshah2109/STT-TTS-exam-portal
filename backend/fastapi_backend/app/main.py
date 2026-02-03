@@ -1,6 +1,5 @@
-from backend.fastapi_backend.app.routers import QuestionGenerator
 from fastapi import FastAPI
-from app.routers import stt, evaluation, tts, rubrics, mcq_evaluation, multi_question_generation
+from app.routers import stt, evaluation, tts, rubrics, mcq_evaluation, QuestionGenerator
 from contextlib import asynccontextmanager
 
 from ai_ml.ModelCreator import HFModelCreation

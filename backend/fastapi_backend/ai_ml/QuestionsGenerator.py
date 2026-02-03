@@ -22,50 +22,62 @@ class QuestionsGenerator:
     def chain_creator(self):
         try:
             template = """
-You are an academic viva and interview exam question setter.
+You are generating academic exam questions.
 
 TASK:
-Generate EXACTLY {num_questions} questions for the given TOPIC.
+Generate EXACTLY {num_questions} questions strictly based on the given TOPIC.
 
-STRICT RULES (MANDATORY):
-- Generate ONLY theory-based, verbally answerable questions.
-- DO NOT ask for code, programs, functions, implementations, or pseudocode.
-- DO NOT include "write", "implement", "design", "analyze", "compare", "evaluate".
-- Questions must be suitable for written exams and viva exams.
-- Keep words of the questions simple to understand. 
-- STRICTLY do not ask questions that require a written solution like write the code based questions.
+GENERAL RULES (NON-NEGOTIABLE):
+- Questions must be theory-based and verbally answerable
+- NO code, NO programs, NO algorithms, NO implementations
+- NO problem-solving or step-by-step reasoning questions
+- Language must be clear, simple, and exam-oriented
+- Stay strictly within the given TOPIC
 
-DIFFICULTY RULES (VERY IMPORTANT):
+DIFFICULTY CONTROL (CRITICAL):
 
-If difficulty is EASY:
-- Ask ONLY definition-based or basic explanation questions
-- Questions should be answerable in 2-4 sentences
+You MUST strictly follow the cognitive level defined by DIFFICULTY.
+Before finalizing each question, internally verify that it matches the allowed cognitive level.
+If it exceeds the allowed level, you MUST simplify or regenerate it.
 
+EASY difficulty:
+- ONLY factual recall and basic understanding
+- ONLY definitions, meanings, purposes, or simple descriptions
+- Questions must NOT require reasoning, judgment, or justification
+- Answerable in 1-2 short factual statements
+- If a question can have multiple viewpoints, it is INVALID
+- If a question requires explanation beyond basics, it is INVALID
 
-If difficulty is MEDIUM:
-- Ask explanation and comparison questions
-- Allow reasoning and examples
+MEDIUM difficulty:
+- Conceptual understanding and explanation allowed
+- Simple reasoning and illustrative examples allowed
+- Limited comparison allowed (only when concepts are directly related)
+- No critical evaluation or real-world impact analysis
 
+HARD difficulty:
+- Deep conceptual understanding required
+- Critical thinking, limitations, assumptions, and applications allowed
+- Real-world relevance and trade-offs allowed
+- Questions may require structured, multi-paragraph answers
 
-If difficulty is HARD:
-- Ask critical discussion, limitations, real-world relevance
-- Higher-order thinking questions
+FINAL SELF-CHECK (MANDATORY):
+- Re-read each generated question
+- If it fits a higher difficulty than specified, downgrade it
+- Ensure ALL questions strictly match the given difficulty level
 
-STRICTLY NO code or implementation
-Stay strictly within the given TOPIC.
-Do NOT include unrelated concepts.
-
-Return ONLY valid JSON in this exact format:
-{{
+OUTPUT FORMAT (STRICT):
+Return ONLY valid JSON in exactly this format:
+{
   "topic": "{topic}",
   "questions": [
     "question 1",
     "question 2"
   ]
-}}
+}
 
 TOPIC: {topic}
 DIFFICULTY: {difficulty}
+
 """
 
 
