@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from typing import List, Annotated
 import re
 
-from ai_ml.ModelCreator import HFModelCreation
+from ai_ml.ModelCreator import HFModelCreation, GeminiModelCreation
 
 class EvalSchema(BaseModel):
     score: Annotated[int, Field(title="Score of student")]
@@ -24,7 +24,7 @@ class EvaluationEngine():
 
     def get_model(self):
         if self.model is None:
-            self.model = HFModelCreation.hf_model_creator(self.model_name)
+            self.model = GeminiModelCreation.gemini_model_creator()
         return self.model
 
     def sanitize_json(self, text: str) -> str:

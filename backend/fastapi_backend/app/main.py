@@ -1,26 +1,34 @@
 from fastapi import FastAPI
-from app.routers import stt, evaluation, tts, rubrics, mcq_evaluation, QuestionGenerator
 from contextlib import asynccontextmanager
 
-from ai_ml.ModelCreator import HFModelCreation
+from ai_ml.ModelCreator import GeminiModelCreation
 from ai_ml.Speech2Text import SpeechModelGenerator
 from ai_ml.MCQEvaluation import MCQEvaluationEngine
 from app.core import models
-
 from app.config import settings
+
+from app.routers import (
+    stt,
+    evaluation,
+    tts,
+    rubrics,
+    mcq_evaluation,
+    QuestionGenerator
+)
 
 from dotenv import load_dotenv
 load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # preload whisper model
+
+    # preload whisper
     models.whisper_model = SpeechModelGenerator.whisper_model_generator()
 
-    # preload AI model ONCE - shared across all services
-    models.ai_model = HFModelCreation.hf_model_creator(settings.HF_EVAL_MODEL_NAME)
+    # preload Gemini ONCE
+    models.ai_model = GeminiModelCreation.gemini_model_creator()
 
-    # preload Sentence Transformers model for similarity score
+    # preload sentence transformer
     models.st_model = MCQEvaluationEngine(settings.MCQ_EVAL_MODEL_NAME)
 
     yield
@@ -37,5 +45,3 @@ app.include_router(tts.router)
 app.include_router(stt.router)
 app.include_router(evaluation.router)
 app.include_router(mcq_evaluation.router)
-
-

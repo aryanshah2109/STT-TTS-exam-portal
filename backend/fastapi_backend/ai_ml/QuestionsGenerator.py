@@ -2,7 +2,7 @@ from langchain_core.prompts import PromptTemplate
 import re
 import json
 
-from ai_ml.ModelCreator import HFModelCreation
+from ai_ml.ModelCreator import HFModelCreation, GeminiModelCreation
 from ai_ml.AIExceptions import (
     ChainCreationException,
     QuestionsGenerationException
@@ -16,7 +16,7 @@ class QuestionsGenerator:
 
     def get_model(self):
         if self.model is None:
-            self.model = HFModelCreation.hf_model_creator(self.model_name)
+            self.model = GeminiModelCreation.gemini_model_creator()
         return self.model
 
     def chain_creator(self):

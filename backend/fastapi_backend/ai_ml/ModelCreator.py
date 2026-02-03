@@ -1,6 +1,9 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain_huggingface import HuggingFacePipeline
 
+from langchain_google_genai import ChatGoogleGenerativeAI
+from app.config import settings
+
 import whisper
 
 from sentence_transformers import SentenceTransformer, util
@@ -87,3 +90,22 @@ class SpeechModelGenerator:
             )
         return cls._hf_model
 
+
+
+class GeminiModelCreation:
+    """
+    Creates a Gemini LLM wrapped as a LangChain Runnable.
+    Loaded ONCE and reused across the app.
+    """
+
+    @staticmethod
+    def gemini_model_creator():
+        try:
+            return ChatGoogleGenerativeAI(
+                model=settings.GEMINI_MODEL_NAME,
+                google_api_key=settings.GEMINI_API_KEY,
+                temperature=0.0,        
+                max_output_tokens=2048
+            )
+        except Exception as e:
+            raise RuntimeError(f"Gemini model loading failed: {e}")
