@@ -5,38 +5,33 @@ from app.config import settings
 
 model_name = settings.HF_EVAL_MODEL_NAME
 
+
 class QuestionGenerationService:
 
     def generate(self, payload: QuestionGenerationRequest):
 
-        data = payload.model_dump()
+        final_output = {}
 
-        try:
+        generator = QuestionsGenerator(
+            model_name=model_name,
+            global_model=models.ai_model
+        )
 
-            # Use models.ai_model loaded during lifespan
+        for topic in payload.topics:
+            questions = generator.create_questions(
+                topic=topic,
+                num_questions=payload.num_questions,
+                difficulty=payload.difficulty
+            )
 
-            result = QuestionsGenerator(model_name=model_name, global_model=models.ai_model).create_questions(data)
-
-            required_keys = ["topic", "questions"]
-
-            if (
-                not result 
-                or not isinstance(result, dict)
-                or any(k not in result for k in required_keys)
-            ):
-                raise ValueError("Model returned invalid output.")
-            
-        except Exception as e:
-            
-            print("Generation error: ", e)
-
-            return {
-                "topic_id": payload.topic_id,
-                "topic": payload.topic,
-                "questions": ["No questions could be generated due to model error"]
+            final_output[topic] = {
+                f"question {i + 1}": q
+                for i, q in enumerate(questions)
             }
 
-        result["topic_id"] = payload.topic_id
-        return result
+        return {
+            "topics": final_output
+        }
+
 
 generation_service = QuestionGenerationService()

@@ -1,5 +1,6 @@
+from backend.fastapi_backend.app.routers import QuestionGenerator
 from fastapi import FastAPI
-from app.routers import stt, evaluation, tts, question_generation, rubrics, mcq_evaluation, multi_question_generation
+from app.routers import stt, evaluation, tts, rubrics, mcq_evaluation, multi_question_generation
 from contextlib import asynccontextmanager
 
 from ai_ml.ModelCreator import HFModelCreation
@@ -31,8 +32,7 @@ app = FastAPI(title="Examecho AI Service", lifespan=lifespan)
 def health():
     return {"status": "ok"}
 
-app.include_router(multi_question_generation.router)
-app.include_router(question_generation.router)
+app.include_router(QuestionGenerator.router)
 app.include_router(rubrics.router)
 app.include_router(tts.router)
 app.include_router(stt.router)

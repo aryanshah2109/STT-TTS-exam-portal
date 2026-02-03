@@ -1,24 +1,26 @@
 from fastapi import APIRouter, HTTPException
-from app.schemas.question_generation import QuestionGenerationRequest, QuestionGenerationResponse
+from app.schemas.question_generation import (
+    QuestionGenerationRequest,
+    QuestionGenerationResponse
+)
 from app.services.question_generation_service import generation_service
 
 router = APIRouter(
     prefix="/questions_generate",
-    tags = ["questions_generation"]
+    tags=["Questions Generation"]
 )
 
-@router.post("/generate", response_model= QuestionGenerationResponse)
-async def generate_route(payload: QuestionGenerationRequest):
-    questions = generation_service.generate(payload)
 
-    if not questions:
+@router.post("/generate", response_model=QuestionGenerationResponse)
+async def generate_route(payload: QuestionGenerationRequest):
+
+    result = generation_service.generate(payload)
+
+    if not result["topics"]:
         raise HTTPException(
-            status_code=500,
-            detail="Model failed to generate questions"
+            status_code=400,
+            detail="No questions could be generated"
         )
 
-    return questions
-
-
-
+    return result
 

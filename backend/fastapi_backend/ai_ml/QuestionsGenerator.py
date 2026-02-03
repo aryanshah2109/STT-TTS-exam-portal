@@ -1,21 +1,16 @@
 from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
-
-from pydantic import BaseModel, Field
-from typing import List, Dict, Annotated, Optional
 import re
+import json
 
 from ai_ml.ModelCreator import HFModelCreation
-from ai_ml.AIExceptions import *
+from ai_ml.AIExceptions import (
+    ChainCreationException,
+    QuestionsGenerationException
+)
 
-
-class OutputResponse(BaseModel):
-    topic_id: Annotated[str, Field(title="Topic id", description="The topic id from database", min_length=1)]
-    topic: Annotated[str, Field(title="Topic of Questions", description="The topic regarding which you wanted questions")]
-    questions: Annotated[List[str], Field(title="Questions", description="The questions created by the model")]
 
 class QuestionsGenerator:
-    def __init__(self, model_name: str, global_model = None):
+    def __init__(self, model_name: str, global_model=None):
         self.model_name = model_name
         self.model = global_model
 
@@ -24,83 +19,98 @@ class QuestionsGenerator:
             self.model = HFModelCreation.hf_model_creator(self.model_name)
         return self.model
 
-    
     def chain_creator(self):
-        parser = JsonOutputParser(pydantic_object=OutputResponse)
+        try:
+            template = """
+You are an academic viva and interview exam question setter.
 
-        template = """
-You are an exam evaluator. 
-You have to generate some number of questions on the given topic from the subject given below
+TASK:
+Generate EXACTLY {num_questions} questions for the given TOPIC.
 
-Be sure that the questions are well stuctured and to the context of the topic and must fall within the subject as requested
-Return ONLY valid JSON. If JSON is malformed, fix it and return valid JSON
+STRICT RULES (MANDATORY):
+- Generate ONLY theory-based, verbally answerable questions.
+- DO NOT ask for code, programs, functions, implementations, or pseudocode.
+- DO NOT include "write", "implement", "design", "analyze", "compare", "evaluate".
+- Questions must be suitable for written exams and viva exams.
+- Keep words of the questions simple to understand. 
+- STRICTLY do not ask questions that require a written solution like write the code based questions.
 
-Number of questions: {num_questions},
+DIFFICULTY RULES (VERY IMPORTANT):
 
-Topic: {topic}
+If difficulty is EASY:
+- Ask ONLY definition-based or basic explanation questions
+- Questions should be answerable in 2-4 sentences
 
-Suject: {subject}
 
-{format_instructions}
+If difficulty is MEDIUM:
+- Ask explanation and comparison questions
+- Allow reasoning and examples
+
+
+If difficulty is HARD:
+- Ask critical discussion, limitations, real-world relevance
+- Higher-order thinking questions
+
+STRICTLY NO code or implementation
+Stay strictly within the given TOPIC.
+Do NOT include unrelated concepts.
+
+Return ONLY valid JSON in this exact format:
+{{
+  "topic": "{topic}",
+  "questions": [
+    "question 1",
+    "question 2"
+  ]
+}}
+
+TOPIC: {topic}
+DIFFICULTY: {difficulty}
 """
 
-        prompt = PromptTemplate(
-            template=template,
-            input_variables= ["num_questions", "topic", "subject"],
-            partial_variables= {
-                "format_instructions": parser.get_format_instructions()
-            }
-        )
 
+            prompt = PromptTemplate(
+                template=template,
+                input_variables=["num_questions", "topic", "difficulty"]
+            )
 
-        chain = prompt | self.get_model()
+            return prompt | self.get_model()
 
-        return chain, parser
+        except Exception as e:
+            raise ChainCreationException(f"Could not create chain: {str(e)}")
 
     def sanitize_json(self, text: str) -> str:
         text = text.replace("```json", "").replace("```", "").strip()
-        m = re.search(r"\{[\s\S]*\}", text)
-        if m:
-            text = m.group(0)
-        text = re.sub(r",\s*}", "}", text)
-        text = re.sub(r",\s*]", "]", text)
-        return text
+        matches = re.findall(r"\{[\s\S]*?\}", text)
+        if not matches:
+            raise ValueError("No JSON object found in model output")
+        return matches[-1]
 
-
-    def create_questions(self, input_request: dict):
-        if "topic" not in input_request:
-            raise KeyError("Input request must contain the topic related to which you want questions")
-        
-        elif "subject" not in input_request:
-            raise KeyError("Input request must contain the subject related to which you want questions")
-
-        elif "num_questions" not in input_request:
-            raise KeyError("Input request must contain the number of questions you want related to the topic")
-        
+    def create_questions(self, topic: str, num_questions: int, difficulty: str):
         try:
-            
-            chain, parser = self.chain_creator()
+            chain = self.chain_creator()
+            raw = chain.invoke({
+                "topic": topic,
+                "num_questions": num_questions,
+                "difficulty": difficulty
+            })
 
-            raw = chain.invoke(input_request)
-
-            # Extract actual text reliably
             if isinstance(raw, dict) and "text" in raw:
                 output = raw["text"]
-
-            elif isinstance(raw, dict) and "generated_text" in raw:
-                output = raw["generated_text"]
-
             elif hasattr(raw, "generations"):
                 output = raw.generations[0][0].text
-
-            elif isinstance(raw, list) and isinstance(raw[0], dict) and "generated_text" in raw[0]:
-                output = raw[0]["generated_text"]
-
             else:
                 output = str(raw)
 
             cleaned = self.sanitize_json(output)
-            return parser.parse(cleaned)
+            data = json.loads(cleaned)
+
+            questions = data.get("questions", [])
+            if not isinstance(questions, list):
+                questions = []
+
+            return questions[:num_questions]
 
         except Exception as e:
-            print(f"Some error occured! Details: {e}")
+            raise QuestionsGenerationException(f"Generation failed: {str(e)}")
+
