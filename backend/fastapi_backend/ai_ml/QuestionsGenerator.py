@@ -22,48 +22,40 @@ class QuestionsGenerator:
     def chain_creator(self):
         try:
             template = """
-You are generating academic exam questions.
+You are an academic exam question setter.
 
 TASK:
-Generate EXACTLY {num_questions} questions strictly based on the given TOPIC.
+Generate EXACTLY {num_questions} questions based strictly on the given TOPIC.
 
-GENERAL RULES (NON-NEGOTIABLE):
+GENERAL RULES:
 - Questions must be theory-based and verbally answerable
 - NO code, NO programs, NO algorithms, NO implementations
-- NO problem-solving or step-by-step reasoning questions
-- Language must be clear, simple, and exam-oriented
+- Language must be clear, simple, and suitable for written exams and viva
 - Stay strictly within the given TOPIC
 
-DIFFICULTY CONTROL (CRITICAL):
-
-You MUST strictly follow the cognitive level defined by DIFFICULTY.
-Before finalizing each question, internally verify that it matches the allowed cognitive level.
-If it exceeds the allowed level, you MUST simplify or regenerate it.
+DIFFICULTY GUIDELINES (FOLLOW STRICTLY):
 
 EASY difficulty:
-- ONLY factual recall and basic understanding
-- ONLY definitions, meanings, purposes, or simple descriptions
-- Questions must NOT require reasoning, judgment, or justification
-- Answerable in 1-2 short factual statements
-- If a question can have multiple viewpoints, it is INVALID
-- If a question requires explanation beyond basics, it is INVALID
+- Generate simple textbook-style questions
+- Focus on definitions, meanings, purposes, or basic descriptions
+- Questions should be directly answerable from standard textbooks
+- No deep thinking or analysis required
+- Answers should be short and straightforward
 
 MEDIUM difficulty:
-- Conceptual understanding and explanation allowed
-- Simple reasoning and illustrative examples allowed
-- Limited comparison allowed (only when concepts are directly related)
-- No critical evaluation or real-world impact analysis
+- Generate questions that require understanding of concepts
+- Allow explanation, reasoning, or simple examples
+- Questions may connect related ideas within the topic
+- Moderate thinking required, but not critical analysis
 
 HARD difficulty:
-- Deep conceptual understanding required
-- Critical thinking, limitations, assumptions, and applications allowed
-- Real-world relevance and trade-offs allowed
-- Questions may require structured, multi-paragraph answers
+- Generate questions that require critical thinking
+- Allow discussion of limitations, implications, applications, or deeper insights
+- Questions may require justification or structured explanation
+- Suitable for long-answer or higher-mark questions
 
-FINAL SELF-CHECK (MANDATORY):
-- Re-read each generated question
-- If it fits a higher difficulty than specified, downgrade it
-- Ensure ALL questions strictly match the given difficulty level
+FINAL CHECK:
+Ensure every question clearly matches the specified difficulty level.
 
 OUTPUT FORMAT (STRICT):
 Return ONLY valid JSON in exactly this format:
@@ -93,10 +85,16 @@ DIFFICULTY: {difficulty}
 
     def sanitize_json(self, text: str) -> str:
         text = text.replace("```json", "").replace("```", "").strip()
-        matches = re.findall(r"\{[\s\S]*?\}", text)
-        if not matches:
-            raise ValueError("No JSON object found in model output")
-        return matches[-1]
+
+        start = text.find("{")
+        end = text.rfind("}")
+
+        if start == -1 or end == -1 or end <= start:
+            raise ValueError("No valid JSON object found in model output")
+
+        return text[start:end + 1]
+
+    
 
     def create_questions(self, topic: str, num_questions: int, difficulty: str):
         try:
@@ -120,6 +118,12 @@ DIFFICULTY: {difficulty}
             questions = data.get("questions", [])
             if not isinstance(questions, list):
                 questions = []
+
+            if len(questions) < num_questions:
+                raise QuestionsGenerationException(
+                    f"Expected {num_questions} questions, got {len(questions)}"
+                )
+
 
             return questions[:num_questions]
 

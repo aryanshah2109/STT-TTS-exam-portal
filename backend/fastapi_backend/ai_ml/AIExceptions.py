@@ -20,11 +20,11 @@ class EngineException(TTSException):
     def __init__(self, message):
         super().__init__(message)
 
-class QuestionsGenerationException:
+class QuestionsGenerationException(Exception):
     def __init__(self, message):
         super().__init__(message)
 
 
-class ChainCreationException:
+class ChainCreationException(Exception):
     def __init__(self, message):
         super().__init__(message)

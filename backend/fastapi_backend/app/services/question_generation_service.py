@@ -23,6 +23,7 @@ class QuestionGenerationService:
                 num_questions=payload.num_questions,
                 difficulty=payload.difficulty
             )
+            
 
             final_output[topic] = {
                 f"question {i + 1}": q

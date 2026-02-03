@@ -45,8 +45,7 @@ class HFModelCreation:
             return HuggingFacePipeline(pipeline=gen)
 
         except Exception as e:
-            print("Error loading HF model:", e)
-            return None
+            raise RuntimeError(f"HF model loading failed: {e}") 
 
 
 class SpeechModelGenerator:
