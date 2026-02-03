@@ -67,13 +67,13 @@ FINAL SELF-CHECK (MANDATORY):
 
 OUTPUT FORMAT (STRICT):
 Return ONLY valid JSON in exactly this format:
-{
+{{
   "topic": "{topic}",
   "questions": [
     "question 1",
     "question 2"
   ]
-}
+}}
 
 TOPIC: {topic}
 DIFFICULTY: {difficulty}
