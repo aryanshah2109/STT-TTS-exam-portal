@@ -2,7 +2,7 @@ from langchain_core.prompts import PromptTemplate
 import re
 import json
 
-from ai_ml.ModelCreator import HFModelCreation, GeminiModelCreation
+from ai_ml.ModelCreator import GeminiModelCreation
 from ai_ml.AIExceptions import (
     ChainCreationException,
     QuestionsGenerationException

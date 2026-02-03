@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from typing import List, Annotated
 import re
 
-from ai_ml.ModelCreator import HFModelCreation, GeminiModelCreation
+from ai_ml.ModelCreator import GeminiModelCreation
 
 class EvalSchema(BaseModel):
     score: Annotated[int, Field(title="Score of student")]
