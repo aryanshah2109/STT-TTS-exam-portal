@@ -58,14 +58,23 @@ FINAL CHECK:
 Ensure every question clearly matches the specified difficulty level.
 
 OUTPUT FORMAT (STRICT):
+OUTPUT FORMAT (STRICT):
+
+You MUST return valid JSON.
+The "questions" array MUST contain EXACTLY {num_questions} questions.
+The array MUST NOT be empty.
+DO NOT return fewer or more questions.
+DO NOT return an empty list.
+
 Return ONLY valid JSON in exactly this format:
-{{
+
+{
   "topic": "{topic}",
   "questions": [
-    "question 1",
-    "question 2"
+    "Question 1",
+    "Question 2"
   ]
-}}
+}
 
 TOPIC: {topic}
 DIFFICULTY: {difficulty}
@@ -123,6 +132,11 @@ DIFFICULTY: {difficulty}
             questions = data.get("questions", [])
             if not isinstance(questions, list):
                 questions = []
+
+            if not questions:
+                raise QuestionsGenerationException(
+                    "Model returned empty questions list. Prompt compliance failed."
+                )
 
             if len(questions) < num_questions:
                 raise QuestionsGenerationException(
