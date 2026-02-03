@@ -25,62 +25,40 @@ class QuestionsGenerator:
 You are an academic exam question setter.
 
 TASK:
-Generate EXACTLY {num_questions} questions based strictly on the given TOPIC.
+Generate EXACTLY {num_questions} theory-based exam questions based strictly on the given TOPIC.
 
 GENERAL RULES:
-- Questions must be theory-based and verbally answerable
-- NO code, NO programs, NO algorithms, NO implementations
-- Language must be clear, simple, and suitable for written exams and viva
-- Stay strictly within the given TOPIC
+- Questions must be verbally answerable
+- NO code, NO programs, NO algorithms
+- Language must be clear and suitable for written exams
+- Stay strictly within the TOPIC
+- Each question must be a complete sentence
 
-DIFFICULTY GUIDELINES (FOLLOW STRICTLY):
+DIFFICULTY:
+EASY: definitions, meanings, purposes
+MEDIUM: explanations, reasoning, simple examples
+HARD: critical thinking, limitations, applications, justification
 
-EASY difficulty:
-- Generate simple textbook-style questions
-- Focus on definitions, meanings, purposes, or basic descriptions
-- Questions should be directly answerable from standard textbooks
-- No deep thinking or analysis required
-- Answers should be short and straightforward
+Before producing the final answer, internally decide all {num_questions} questions.
+Do NOT output this reasoning.
 
-MEDIUM difficulty:
-- Generate questions that require understanding of concepts
-- Allow explanation, reasoning, or simple examples
-- Questions may connect related ideas within the topic
-- Moderate thinking required, but not critical analysis
+OUTPUT RULES (MANDATORY):
+- Return ONLY valid JSON
+- Do NOT include markdown, comments, or explanations
+- "questions" MUST be a list of strings
+- The list MUST contain EXACTLY {num_questions} items
+- The list MUST NOT be empty
 
-HARD difficulty:
-- Generate questions that require critical thinking
-- Allow discussion of limitations, implications, applications, or deeper insights
-- Questions may require justification or structured explanation
-- Suitable for long-answer or higher-mark questions
-
-FINAL CHECK:
-Ensure every question clearly matches the specified difficulty level.
-
-OUTPUT FORMAT (STRICT):
-OUTPUT FORMAT (STRICT):
-
-You MUST return valid JSON.
-The "questions" array MUST contain EXACTLY {num_questions} questions.
-The array MUST NOT be empty.
-DO NOT return fewer or more questions.
-DO NOT return an empty list.
-
-Return ONLY valid JSON in exactly this format:
+JSON SCHEMA (DO NOT DEVIATE):
 
 {{
   "topic": "{topic}",
-  "questions": [
-    "Question 1",
-    "Question 2"
-  ]
+  "questions": ["<string>", "<string>"]
 }}
 
 TOPIC: {topic}
 DIFFICULTY: {difficulty}
-
 """
-
 
             prompt = PromptTemplate(
                 template=template,
@@ -100,19 +78,17 @@ DIFFICULTY: {difficulty}
         for i, ch in enumerate(text):
             if ch == "{":
                 try:
-                    obj, end = decoder.raw_decode(text[i:])
+                    obj, _ = decoder.raw_decode(text[i:])
                     return json.dumps(obj)
                 except json.JSONDecodeError:
                     continue
 
         raise ValueError("No valid JSON object found in model output")
 
-
-    
-
     def create_questions(self, topic: str, num_questions: int, difficulty: str):
         try:
             chain = self.chain_creator()
+
             raw = chain.invoke({
                 "topic": topic,
                 "num_questions": num_questions,
@@ -121,6 +97,8 @@ DIFFICULTY: {difficulty}
 
             if isinstance(raw, dict) and "text" in raw:
                 output = raw["text"]
+            elif hasattr(raw, "content"):
+                output = raw.content
             elif hasattr(raw, "generations"):
                 output = raw.generations[0][0].text
             else:
@@ -130,22 +108,28 @@ DIFFICULTY: {difficulty}
             data = json.loads(cleaned)
 
             questions = data.get("questions", [])
-            if not isinstance(questions, list):
-                questions = []
 
-            if not questions:
+            if not isinstance(questions, list):
+                raise QuestionsGenerationException("Invalid questions format returned")
+
+            normalized = []
+            for q in questions:
+                if isinstance(q, str):
+                    q = re.sub(r"^\s*\d+[\.\)]\s*", "", q).strip()
+                    if q:
+                        normalized.append(q)
+
+            if not normalized:
                 raise QuestionsGenerationException(
                     "Model returned empty questions list. Prompt compliance failed."
                 )
 
-            if len(questions) < num_questions:
+            if len(normalized) < num_questions:
                 raise QuestionsGenerationException(
-                    f"Expected {num_questions} questions, got {len(questions)}"
+                    f"Expected {num_questions} questions, got {len(normalized)}"
                 )
 
-
-            return questions[:num_questions]
+            return normalized[:num_questions]
 
         except Exception as e:
             raise QuestionsGenerationException(f"Generation failed: {str(e)}")
-
