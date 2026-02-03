@@ -68,13 +68,13 @@ DO NOT return an empty list.
 
 Return ONLY valid JSON in exactly this format:
 
-{
+{{
   "topic": "{topic}",
   "questions": [
     "Question 1",
     "Question 2"
   ]
-}
+}}
 
 TOPIC: {topic}
 DIFFICULTY: {difficulty}
