@@ -86,13 +86,18 @@ DIFFICULTY: {difficulty}
     def sanitize_json(self, text: str) -> str:
         text = text.replace("```json", "").replace("```", "").strip()
 
-        start = text.find("{")
-        end = text.rfind("}")
+        decoder = json.JSONDecoder()
 
-        if start == -1 or end == -1 or end <= start:
-            raise ValueError("No valid JSON object found in model output")
+        for i, ch in enumerate(text):
+            if ch == "{":
+                try:
+                    obj, end = decoder.raw_decode(text[i:])
+                    return json.dumps(obj)
+                except json.JSONDecodeError:
+                    continue
 
-        return text[start:end + 1]
+        raise ValueError("No valid JSON object found in model output")
+
 
     
 
