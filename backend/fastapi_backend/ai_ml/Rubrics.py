@@ -38,10 +38,10 @@ You are an exam evaluator.
 Generate marking rubrics for the given question.
 
 Return ONLY valid JSON in the following format:
-{
+{{
   "question_text": "{question_text}",
   "rubrics": []
-}
+}}
 
 Question: {question_text}
 Total Marks: {max_marks}
