@@ -26,26 +26,19 @@ class EvaluationEngine:
         return self.model
 
     def extract_and_fix_json(self, text: str) -> dict:
-        """
-        Robust JSON repair for LLM output (Gemini-safe)
-        """
-        # remove markdown fences
         text = text.replace("```json", "").replace("```", "").strip()
-
-        # extract first {...} block
         match = re.search(r"\{[\s\S]*\}", text)
         if not match:
-            raise ValueError("No JSON object found in model output")
-
+            raise ValueError("No JSON object found")
         json_like = match.group(0)
-
-        # normalize quotes (Gemini often uses single quotes)
         json_like = json_like.replace("'", '"')
-
-        # remove trailing commas
+        json_like = re.sub(
+            r'(?<!")(\b[a-zA-Z_][a-zA-Z0-9_]*\b)\s*:',
+            r'"\1":',
+            json_like
+        )
         json_like = re.sub(r",\s*}", "}", json_like)
         json_like = re.sub(r",\s*]", "]", json_like)
-
         return json.loads(json_like)
 
     def create_evaluation_chain(self):
@@ -102,7 +95,5 @@ Return JSON ONLY in this format:
             output = str(raw)
 
         data = self.extract_and_fix_json(output)
-
-        # strict validation
         EvalSchema(**data)
         return data
