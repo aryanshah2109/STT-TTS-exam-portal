@@ -1,6 +1,6 @@
 from langchain_core.prompts import PromptTemplate
 from ai_ml.ModelCreator import GeminiModelCreation
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List
 import re
 import json
@@ -13,6 +13,14 @@ class EvalSchema(BaseModel):
     weakness: List[str]
     justification: str
     suggested_improvement: str
+    
+    @field_validator("score", mode="before")
+    @classmethod
+    def convert_score_to_int(cls, v):
+        """Convert float scores to int by rounding"""
+        if isinstance(v, float):
+            return int(round(v))
+        return int(v)
 
 
 class EvaluationEngine:
