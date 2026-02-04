@@ -1,7 +1,7 @@
 from langchain_core.prompts import PromptTemplate
 from ai_ml.ModelCreator import GeminiModelCreation
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List
 import re
 import json
@@ -55,13 +55,13 @@ Student Answer:
 Maximum Marks: {max_marks}
 
 Return format:
-{
+{{
   "score": 0,
   "strengths": [],
   "weakness": [],
   "justification": "",
   "suggested_improvement": ""
-}
+}}
 """
 
         prompt = PromptTemplate(
