@@ -25,22 +25,36 @@ class EvaluationEngine:
             self.model = GeminiModelCreation.gemini_model_creator()
         return self.model
 
-    def sanitize_json(self, text: str) -> str:
+    def extract_and_fix_json(self, text: str) -> dict:
+        """
+        Robust JSON repair for LLM output (Gemini-safe)
+        """
+        # remove markdown fences
         text = text.replace("```json", "").replace("```", "").strip()
+
+        # extract first {...} block
         match = re.search(r"\{[\s\S]*\}", text)
         if not match:
-            raise ValueError("No JSON object found")
-        text = match.group(0)
-        text = re.sub(r",\s*}", "}", text)
-        text = re.sub(r",\s*]", "]", text)
-        return text
+            raise ValueError("No JSON object found in model output")
+
+        json_like = match.group(0)
+
+        # normalize quotes (Gemini often uses single quotes)
+        json_like = json_like.replace("'", '"')
+
+        # remove trailing commas
+        json_like = re.sub(r",\s*}", "}", json_like)
+        json_like = re.sub(r",\s*]", "]", json_like)
+
+        return json.loads(json_like)
 
     def create_evaluation_chain(self):
         template = """
 You are a very strict exam evaluation engine.
 
 Rules:
-- Return ONLY valid JSON
+- Return ONLY a JSON object
+- Do NOT include explanations or text outside JSON
 - If student says "I don't know", score MUST be 0
 
 Rubric:
@@ -54,7 +68,7 @@ Student Answer:
 
 Maximum Marks: {max_marks}
 
-Return format:
+Return JSON ONLY in this format:
 {{
   "score": 0,
   "strengths": [],
@@ -87,8 +101,8 @@ Return format:
         else:
             output = str(raw)
 
-        cleaned = self.sanitize_json(output)
-        data = json.loads(cleaned)
+        data = self.extract_and_fix_json(output)
 
+        # strict validation
         EvalSchema(**data)
         return data
