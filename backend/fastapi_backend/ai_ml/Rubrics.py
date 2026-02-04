@@ -131,7 +131,10 @@ Total Marks: {max_marks}
         chain = self.create_rubrics_chain()
         raw = chain.invoke(input_features)
 
-        if isinstance(raw, dict) and "text" in raw:
+        # Properly extract content from LangChain response
+        if hasattr(raw, 'content'):
+            output = raw.content
+        elif isinstance(raw, dict) and "text" in raw:
             output = raw["text"]
         elif hasattr(raw, "generations"):
             output = raw.generations[0][0].text
