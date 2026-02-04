@@ -1,10 +1,10 @@
 from langchain_core.prompts import PromptTemplate
 from ai_ml.ModelCreator import GeminiModelCreation
-
 from pydantic import BaseModel
 from typing import List
 import re
 import json
+from json.decoder import JSONDecodeError
 
 
 class EvalSchema(BaseModel):
@@ -26,28 +26,80 @@ class EvaluationEngine:
         return self.model
 
     def extract_and_fix_json(self, text: str) -> dict:
-        text = text.replace("```json", "").replace("```", "").strip()
-        match = re.search(r"\{[\s\S]*\}", text)
-        if not match:
-            raise ValueError("No JSON object found")
-        json_like = match.group(0)
-        json_like = json_like.replace("'", '"')
-        json_like = re.sub(
-            r'(?<!")(\b[a-zA-Z_][a-zA-Z0-9_]*\b)\s*:',
-            r'"\1":',
-            json_like
+        """
+        Extract JSON from model output with robust error handling.
+        """
+        # Clean the text
+        text = text.strip()
+        
+        # Remove markdown code blocks
+        text = re.sub(r'```json\s*', '', text)
+        text = re.sub(r'```\s*', '', text)
+        
+        # Try to find JSON object
+        json_match = re.search(r'(\{.*\})', text, re.DOTALL)
+        
+        if not json_match:
+            # Try to find JSON array as fallback
+            json_match = re.search(r'(\[.*\])', text, re.DOTALL)
+            if not json_match:
+                raise ValueError("No JSON object or array found in the response")
+        
+        json_str = json_match.group(1).strip()
+        
+        # First, try to parse it as-is
+        try:
+            return json.loads(json_str)
+        except JSONDecodeError:
+            pass  # Continue with fixing attempts
+        
+        # Fix common JSON issues
+        fixed_json = json_str
+        
+        # Replace single quotes with double quotes 
+        # Only replace single quotes at the boundaries of strings
+        fixed_json = re.sub(
+            r':\s*\'(.*?)\'\s*([,}])',
+            r': "\1"\2',
+            fixed_json
         )
-        json_like = re.sub(r",\s*}", "}", json_like)
-        json_like = re.sub(r",\s*]", "]", json_like)
-        return json.loads(json_like)
+        fixed_json = re.sub(
+            r'\{\s*\'(.*?)\'\s*:',
+            r'{ "\1":',
+            fixed_json
+        )
+        
+        # Ensure property names are quoted
+        fixed_json = re.sub(
+            r'(?<!["\w])(\b[a-zA-Z_][a-zA-Z0-9_]*\b)\s*:',
+            r'"\1":',
+            fixed_json
+        )
+        
+        # Remove trailing commas
+        fixed_json = re.sub(r',\s*([}\]])', r'\1', fixed_json)
+        
+        # Handle escaped quotes
+        fixed_json = fixed_json.replace('\\"', '\\\\"')
+        
+        # Try parsing again
+        try:
+            return json.loads(fixed_json)
+        except JSONDecodeError as e:
+            # For debugging
+            print(f"Original text: {text[:500]}")
+            print(f"JSON attempt: {json_str[:500]}")
+            print(f"Fixed JSON: {fixed_json[:500]}")
+            raise ValueError(f"Invalid JSON format: {str(e)}")
 
     def create_evaluation_chain(self):
         template = """
-You are a very strict exam evaluation engine.
+You are a strict exam evaluation engine.
 
 Rules:
-- Return ONLY a JSON object
-- Do NOT include explanations or text outside JSON
+- Return ONLY a valid JSON object
+- Use double quotes for all property names and string values
+- Do NOT include any explanations or text outside the JSON
 - If student says "I don't know", score MUST be 0
 
 Rubric:
@@ -61,7 +113,7 @@ Student Answer:
 
 Maximum Marks: {max_marks}
 
-Return JSON ONLY in this format:
+Return JSON ONLY in this EXACT format:
 {{
   "score": 0,
   "strengths": [],
@@ -69,6 +121,8 @@ Return JSON ONLY in this format:
   "justification": "",
   "suggested_improvement": ""
 }}
+
+IMPORTANT: Your response must be valid JSON that can be parsed by json.loads().
 """
 
         prompt = PromptTemplate(
@@ -93,7 +147,16 @@ Return JSON ONLY in this format:
             output = raw.generations[0][0].text
         else:
             output = str(raw)
-
-        data = self.extract_and_fix_json(output)
-        EvalSchema(**data)
-        return data
+        
+        # Log the raw output
+        print(f"DEBUG - Raw model output: {output[:500]}...")
+        
+        try:
+            data = self.extract_and_fix_json(output)
+            # Validate with Pydantic schema
+            validated_data = EvalSchema(**data)
+            return validated_data.model_dump()
+        except Exception as e:
+            print(f"DEBUG - Error during JSON parsing: {e}")
+            print(f"DEBUG - Full output: {output}")
+            raise
