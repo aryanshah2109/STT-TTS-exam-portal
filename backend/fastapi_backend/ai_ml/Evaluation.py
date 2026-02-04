@@ -1,24 +1,22 @@
 from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-
-from pydantic import BaseModel, Field
-from typing import List, Annotated
-import re
-
 from ai_ml.ModelCreator import GeminiModelCreation
 
+from pydantic import BaseModel, Field
+from typing import List
+import re
+import json
+
+
 class EvalSchema(BaseModel):
-    score: Annotated[int, Field(title="Score of student")]
-    strengths: Annotated[List[str], Field(title="Strengths in student's answer")]
-    weakness: Annotated[List[str], Field(title="Weaknesses in student's answer")]
-    justification: Annotated[str, Field(title="Summary of evaluation")]
-    suggested_improvement: Annotated[str, Field(title="Improvements required")]
+    score: int
+    strengths: List[str]
+    weakness: List[str]
+    justification: str
+    suggested_improvement: str
 
 
-
-class EvaluationEngine():
-
-    def __init__(self, model_name: str, global_model = None):
+class EvaluationEngine:
+    def __init__(self, model_name: str, global_model=None):
         self.model_name = model_name
         self.model = global_model
 
@@ -30,21 +28,20 @@ class EvaluationEngine():
     def sanitize_json(self, text: str) -> str:
         text = text.replace("```json", "").replace("```", "").strip()
         match = re.search(r"\{[\s\S]*\}", text)
-        if match:
-            text = match.group(0)
+        if not match:
+            raise ValueError("No JSON object found")
+        text = match.group(0)
         text = re.sub(r",\s*}", "}", text)
         text = re.sub(r",\s*]", "]", text)
         return text
 
     def create_evaluation_chain(self):
-        try:
-            parser = JsonOutputParser(pydantic_object=EvalSchema)
-
-            template = """
+        template = """
 You are a very strict exam evaluation engine.
-Return ONLY valid JSON. If JSON is malformed, fix it and return valid JSON.
-If the student says that they do not know the answer then you must give them a 0
-DO NOT GIVE marks greater than 0 if the student doesn't know the answer
+
+Rules:
+- Return ONLY valid JSON
+- If student says "I don't know", score MUST be 0
 
 Rubric:
 {rubric}
@@ -57,47 +54,41 @@ Student Answer:
 
 Maximum Marks: {max_marks}
 
-{format_instructions}
+Return format:
+{
+  "score": 0,
+  "strengths": [],
+  "weakness": [],
+  "justification": "",
+  "suggested_improvement": ""
+}
 """
 
-            prompt = PromptTemplate(
-                template=template,
-                input_variables=["rubric", "question_text", "student_answer", "max_marks"],
-                partial_variables={"format_instructions": parser.get_format_instructions()},
-            )
+        prompt = PromptTemplate(
+            template=template,
+            input_variables=[
+                "rubric",
+                "question_text",
+                "student_answer",
+                "max_marks"
+            ],
+        )
 
-            chain = prompt | self.get_model()
-            return chain, parser
-
-        except Exception as e:
-            print("Error creating evaluation chain:", e)
-            return None, None
+        return prompt | self.get_model()
 
     def model_evaluator(self, input_features: dict):
-        try:
+        chain = self.create_evaluation_chain()
+        raw = chain.invoke(input_features)
 
-            chain, parser = self.create_evaluation_chain()
-            raw = chain.invoke(input_features)
+        if isinstance(raw, dict) and "text" in raw:
+            output = raw["text"]
+        elif hasattr(raw, "generations"):
+            output = raw.generations[0][0].text
+        else:
+            output = str(raw)
 
-            # Extract actual text reliably
-            if isinstance(raw, dict) and "text" in raw:
-                output = raw["text"]
+        cleaned = self.sanitize_json(output)
+        data = json.loads(cleaned)
 
-            elif isinstance(raw, dict) and "generated_text" in raw:
-                output = raw["generated_text"]
-
-            elif hasattr(raw, "generations"):
-                output = raw.generations[0][0].text
-
-            elif isinstance(raw, list) and isinstance(raw[0], dict) and "generated_text" in raw[0]:
-                output = raw[0]["generated_text"]
-
-            else:
-                output = str(raw)
-
-            cleaned = self.sanitize_json(output)
-            return parser.parse(cleaned)
-
-        except Exception as e:
-            print("Evaluation Error:", e)
-            return {}
+        EvalSchema(**data)
+        return data
