@@ -79,9 +79,6 @@ class EvaluationEngine:
         # Remove trailing commas
         fixed_json = re.sub(r',\s*([}\]])', r'\1', fixed_json)
         
-        # Handle escaped quotes
-        fixed_json = fixed_json.replace('\\"', '\\\\"')
-        
         # Try parsing again
         try:
             return json.loads(fixed_json)
@@ -141,7 +138,10 @@ IMPORTANT: Your response must be valid JSON that can be parsed by json.loads().
         chain = self.create_evaluation_chain()
         raw = chain.invoke(input_features)
 
-        if isinstance(raw, dict) and "text" in raw:
+        # Properly extract content from LangChain response
+        if hasattr(raw, 'content'):
+            output = raw.content
+        elif isinstance(raw, dict) and "text" in raw:
             output = raw["text"]
         elif hasattr(raw, "generations"):
             output = raw.generations[0][0].text
