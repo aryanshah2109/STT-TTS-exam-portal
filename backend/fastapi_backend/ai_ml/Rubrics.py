@@ -47,13 +47,13 @@ class RubricsEngine:
         # First, try to parse it as-is
         try:
             return json.loads(json_str)
-        except JSONDecodeError:
+        except JSONDecodeError as first_error:
             pass  # Continue with fixing attempts
         
-        #  common JSON issues
+        # Fix common JSON issues
         fixed_json = json_str
         
-        #  1: Replace single quotes with double quotes (careful approach)
+        # 1: Replace single quotes with double quotes (careful approach)
         # Only replace single quotes at the boundaries of strings
         fixed_json = re.sub(
             r':\s*\'(.*?)\'\s*([,}])',
@@ -66,18 +66,15 @@ class RubricsEngine:
             fixed_json
         )
         
-        #  2: Ensure property names are quoted
+        # 2: Ensure property names are quoted
         fixed_json = re.sub(
             r'(?<!["\w])(\b[a-zA-Z_][a-zA-Z0-9_]*\b)\s*:',
             r'"\1":',
             fixed_json
         )
         
-        #  3: Remove trailing commas
+        # 3: Remove trailing commas
         fixed_json = re.sub(r',\s*([}\]])', r'\1', fixed_json)
-        
-        #  4: Handle escaped quotes
-        fixed_json = fixed_json.replace('\\"', '\\\\"')
         
         # Try parsing again
         try:
@@ -87,6 +84,7 @@ class RubricsEngine:
             print(f"Original text: {text[:500]}")
             print(f"JSON attempt: {json_str[:500]}")
             print(f"Fixed JSON: {fixed_json[:500]}")
+            print(f"DEBUG - Error during JSON parsing: {str(e)}")
             raise ValueError(f"Invalid JSON format: {str(e)}")
 
     def create_rubrics_chain(self):
