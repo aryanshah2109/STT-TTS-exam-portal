@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from ai_ml.ModelCreator import GeminiModelCreation
@@ -34,6 +35,15 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Examecho AI Service", lifespan=lifespan)
+
+# Add CORS middleware for HF Spaces compatibility
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 def health():

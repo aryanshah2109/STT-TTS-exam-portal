@@ -24,3 +24,7 @@ tmp/
 
 # VSCode
 .vscode/
+
+
+HF_DEPLOYMENT_GUIDE.md
+QUICK_DEPLOY_STEPS.md

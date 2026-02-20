@@ -1,13 +1,10 @@
 import os
 import uuid
 from gtts import gTTS
+import tempfile
+from pathlib import Path
 
  
-# Create local folder automatically if not exists
- 
-BASE_DIR = "generated_audio"
-
-os.makedirs(BASE_DIR, exist_ok=True)
 
 
 def generate_tts_audio(text: str, language: str = "en", slow: bool = False) -> str:
@@ -15,6 +12,8 @@ def generate_tts_audio(text: str, language: str = "en", slow: bool = False) -> s
     Generate speech audio from text using gTTS.
     Saves file locally inside generated_audio/ folder.
     Returns the local file path.
+    
+    For HF Spaces, uses /tmp for temporary storage.
     """
 
     # Generate audio
@@ -23,6 +22,9 @@ def generate_tts_audio(text: str, language: str = "en", slow: bool = False) -> s
     # Create unique filename
     filename = f"{uuid.uuid4()}.mp3"
     file_path = os.path.join(BASE_DIR, filename)
+
+    # Create directory if it doesn't exist
+    Path(file_path).parent.mkdir(parents=True, exist_ok=True)
 
     # Save to disk
     tts.save(file_path)

@@ -1,15 +1,18 @@
+# Core ML / Transformers
+torch>=2.2.0
 transformers==4.48.0
 tokenizers==0.21.0
 huggingface-hub==0.24.0
+datasets==2.18.0
+accelerate==0.27.2
+sentencepiece==0.2.0
+protobuf==4.25.3
+tqdm==4.66.2
 
-fastapi==0.110.0
-uvicorn==0.29.0
-pydantic==2.7.4
-pydantic-settings==2.4.0
-python-dotenv==1.0.1
-python-multipart==0.0.9
+# Whisper
+openai-whisper @ git+https://github.com/openai/whisper.git
 
-gTTS>=2.5.0
+# Audio Processing
 numpy==1.26.4
 scipy==1.12.0
 librosa==0.10.1
@@ -17,16 +20,17 @@ soundfile==0.12.1
 pydub==0.25.1
 noisereduce==3.0.0
 webrtcvad-wheels==2.0.14
+gTTS>=2.5.0
 
+# Backend
+fastapi==0.110.0
+uvicorn==0.29.0
+pydantic==2.7.4
+pydantic-settings==2.4.0
+python-dotenv==1.0.1
+python-multipart==0.0.9
 
-openai-whisper==20231117
-
-datasets==2.18.0
-accelerate==0.27.2
-sentencepiece==0.2.0
-tqdm==4.66.2
-protobuf==4.25.3
-
+# LangChain Stack
 langchain==0.3.27
 langchain-core==0.3.83
 langchain-community==0.3.27
@@ -34,6 +38,6 @@ langchain-text-splitters==0.3.11
 langchain-google-genai==2.0.10
 google-generativeai==0.8.6
 
+# Embeddings / Fine-tuning
 sentence-transformers==3.0.1
 peft==0.13.2
-

@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements-hf.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements-hf.txt
+
+# Copy application
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /tmp/generated_audio
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV HF_ACCESS_TOKEN=${HF_ACCESS_TOKEN}
+ENV LOAD_WHISPER=true
+ENV LOAD_GEMINI=false
+ENV LOAD_SENTENCE_TRANSFORMER=false
+ENV TTS_OUTPUT_DIR=/tmp/generated_audio
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:7860/health')"
+
+# Run the app on port 7860 (standard HF Spaces port)
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
